@@ -84,7 +84,7 @@ function Load_Zibal_Pos_Gateway()
                         'title' => array(
                             'title' => __('عنوان', 'woocommerce'),
                             'type' => 'text',
-                            'description' => __('عنوان درگاه که در طی خرید به مشتری نمایش داده میشود', 'woocommerce'),
+                            'description' => __('عنوان روش پرداخت که در طی خرید به مشتری نمایش داده میشود', 'woocommerce'),
                             'default' => __('پرداخت در محل با زیبال', 'woocommerce'),
                             'desc_tip' => true,
                         ),
@@ -92,7 +92,7 @@ function Load_Zibal_Pos_Gateway()
                             'title' => __('توضیحات درگاه', 'woocommerce'),
                             'type' => 'text',
                             'desc_tip' => true,
-                            'description' => __('توضیحاتی که در طی عملیات پرداخت برای درگاه نمایش داده خواهد شد', 'woocommerce'),
+                            'description' => __('توضیحاتی که در طی عملیات پرداخت نمایش داده خواهد شد', 'woocommerce'),
                             'default' => __('پرداخت توسط دستگاه های کارتخوان به وسیله کلیه کارت های عضو شتاب از طریق زیبال', 'woocommerce')
                         ),
                         'account_confing' => array(
@@ -205,11 +205,22 @@ function Load_Zibal_Pos_Gateway()
                
 
                 $Amount = apply_filters('woocommerce_order_amount_total_Zibal_Pos_gateway', $Amount, $currency);
+ if (strtolower($currency) == strtolower('IRT') || strtolower($currency) == strtolower('TOMAN') || strtolower($currency) == strtolower('Iran TOMAN') || strtolower($currency) == strtolower('Iranian TOMAN') || strtolower($currency) == strtolower('Iran-TOMAN') || strtolower($currency) == strtolower('Iranian-TOMAN') || strtolower($currency) == strtolower('Iran_TOMAN') || strtolower($currency) == strtolower('Iranian_TOMAN') || strtolower($currency) == strtolower('تومان') || strtolower($currency) == strtolower('تومان ایران')
+                            )
+                                $Amount = $Amount * 10;
+                            else if (strtolower($currency) == strtolower('IRHT'))
+                                $Amount = $Amount * 10000;
+                            else if (strtolower($currency) == strtolower('IRHR'))
+                                $Amount = $Amount * 1000;
+                            else if (strtolower($currency) == strtolower('IRR'))
+                                $Amount = $Amount;
+
 
                 $merchantId = $this->merchantId;
                 $secretKey = $this->secretKey;
 
                 $CallbackUrl = add_query_arg('wc_order', $order_id, WC()->api_request_url('WC_Zibal_Pos_Gateway'));
+
 
                 $products = array();
                 $order_items = $order->get_items();
@@ -221,7 +232,7 @@ function Load_Zibal_Pos_Gateway()
                 $Description = 'خریدار : ' . $order->billing_first_name . ' ' . $order->billing_last_name . ' | محصولات : ' . $products;
                 $Mobile = get_post_meta($order_id, '_billing_phone', true) ? get_post_meta($order_id, '_billing_phone', true) : '-';
 
-                //Hooks for iranian developer
+
                 $Description = apply_filters('WC_Zibal_Pos_Description', $Description, $order_id);
                 $Mobile = apply_filters('WC_Zibal_Pos_Mobile', $Mobile, $order_id);
                 do_action('WC_Zibal_Pos_Gateway_Payment', $order_id, $Description, $Mobile);
@@ -232,11 +243,13 @@ function Load_Zibal_Pos_Gateway()
                     "orderId"=> $order->get_order_number(),
                     "callbackUrl"=> $CallbackUrl,
                     "amount"=> $Amount,
+		    "mobile"=>$Mobile,
                     "description"=> $Description
                 );
 
                 $result = $this->SendRequestToZibal('addOrder',json_encode($parameters));
-
+		if($result['result']==4)
+                	$result = $this->SendRequestToZibal('editOrder',json_encode($parameters));
 
 			
 
@@ -248,17 +261,18 @@ function Load_Zibal_Pos_Gateway()
                         update_post_meta($order_id, '_transaction_id', $result['zibalId']);
                         $woocommerce->cart->empty_cart();
 
-                        $Note = sprintf(__('سفارش با موفقیت ثبت شد. لطفا کد s% را روی دستگاه کارتخوان وارد کنید.<br/>', 'woocommerce'), $result['zibalId']);
+                        $Note = sprintf(__('سفارش با موفقیت ثبت شد. لطفا کد %s را روی دستگاه کارتخوان وارد کنید.', 'woocommerce'), $result['zibalId']);
                         $Note = apply_filters('WC_Zibal_Pos_Return_from_Gateway_Success_Note', $Note, $order_id, $result['zibalId']);
                         if ($Note)
                             $order->add_order_note($Note, 1);
-
 
                         $Notice = wpautop(wptexturize($this->success_massage));
 
                         $Notice = str_replace("{zibal_id}", $result['zibalId'], $Notice);
 
                         $Notice = apply_filters('WC_Zibal_Pos_Return_from_Gateway_Success_Notice', $Notice, $order_id, $Transaction_ID);
+
+
                         if ($Notice)
                             wc_add_notice($Notice, 'success');
 
@@ -312,7 +326,31 @@ die();
 
 
                             $Amount = intval($order->order_total);
-                        
+                        if (strtolower($currency) == strtolower('IRT') || strtolower($currency) == strtolower('TOMAN') || strtolower($currency) == strtolower('Iran TOMAN') || strtolower($currency) == strtolower('Iranian TOMAN') || strtolower($currency) == strtolower('Iran-TOMAN') || strtolower($currency) == strtolower('Iranian-TOMAN') || strtolower($currency) == strtolower('Iran_TOMAN') || strtolower($currency) == strtolower('Iranian_TOMAN') || strtolower($currency) == strtolower('تومان') || strtolower($currency) == strtolower('تومان ایران')
+                            )
+                                $Amount = $Amount * 10;
+                            else if (strtolower($currency) == strtolower('IRHT'))
+                                $Amount = $Amount * 10000;
+                            else if (strtolower($currency) == strtolower('IRHR'))
+                                $Amount = $Amount * 1000;
+                            else if (strtolower($currency) == strtolower('IRR'))
+                                $Amount = $Amount;
+
+     $merchantId = $this->merchantId;
+                $secretKey = $this->secretKey;
+
+//verify
+
+                $parameters = array(
+                    "merchantId"=>$merchantId,
+                    "secretKey"=> $secretKey,
+                    "orderId"=> $order_id
+                );
+
+                $result = $this->SendRequestToZibal('readOrder',json_encode($parameters));
+
+		if($result['result']!=1 || $result['refNumber']!= $zibalData['refNumber'] || $result['amount']!=$Amount)
+die('invalid data!');
 
 
 
@@ -320,6 +358,9 @@ die();
                         $Transaction_ID = $zibalData['zibalId'];
                         $Fault = '';
                         $Message = '';
+
+
+
 
 
                         if ($Status == 'completed' && isset($Transaction_ID) && $Transaction_ID != 0) {
@@ -330,7 +371,7 @@ die();
                             $order->payment_complete($Transaction_ID);
                             $woocommerce->cart->empty_cart();
 
-                            $Note = sprintf(__('اعلام پرداخت موفق با کد مرجع s%', 'woocommerce'), $zibalData['refNumber']);
+                            $Note = sprintf(__('اعلام پرداخت موفق کارتخوان با کد مرجع %s و تاریخ پرداخت %s', 'woocommerce'), $zibalData['refNumber'], $zibalData['paidAt']);
                             $Note = apply_filters('WC_Zibal_Pos_Return_from_Gateway_Success_Note', $Note, $order_id, $Transaction_ID);
                             if ($Note)
                                 $order->add_order_note($Note, 1);
